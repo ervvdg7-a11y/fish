@@ -1,0 +1,5 @@
+name: TropicalFishBreed
+version: 1.0.0
+main: com.example.tropicalfishbreed.TropicalFishBreed
+api-version: '1.21'
+description: Breed tropical fish with kelp and heart particles.
