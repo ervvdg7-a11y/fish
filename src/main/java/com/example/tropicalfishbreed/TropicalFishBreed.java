@@ -32,64 +32,81 @@ public final class TropicalFishBreed extends JavaPlugin implements Listener {
         Entity target = event.getRightClicked();
 
         if (!(target instanceof TropicalFish fish)) return;
+
         ItemStack item = player.getInventory().getItem(event.getHand());
-        if (item == null || item.getType() != Material.KELP) return;
+        if (item.getType() != Material.KELP) return;
 
         event.setCancelled(true);
 
-        if (fish.getWorld().getNearbyEntities(fish.getLocation(), 4, 3, 4).stream()
-                .filter(e -> e instanceof TropicalFish && !e.getUniqueId().equals(fish.getUniqueId()))
+        TropicalFish partner = fish.getWorld()
+                .getNearbyEntities(fish.getLocation(), 4, 3, 4)
+                .stream()
+                .filter(e -> e instanceof TropicalFish)
                 .map(e -> (TropicalFish) e)
-                .findAny().isEmpty()) {
-            player.sendMessage("§eРядом нет второй тропической рыбки!");
-            return;
-        }
-
-        TropicalFish partner = fish.getWorld().getNearbyEntities(fish.getLocation(), 4, 3, 4).stream()
-                .filter(e -> e instanceof TropicalFish && !e.getUniqueId().equals(fish.getUniqueId()))
-                .map(e -> (TropicalFish) e)
+                .filter(f -> !f.getUniqueId().equals(fish.getUniqueId()))
                 .filter(f -> !isOnCooldown(f) && !isOnCooldown(fish))
-                .findFirst().orElse(null);
+                .findFirst()
+                .orElse(null);
 
         if (partner == null) {
-            player.sendMessage("§eЭти рыбки пока не готовы к размножению.");
+            player.sendMessage("§eРядом нет готовой второй тропической рыбки!");
             return;
         }
 
-        if (item.getAmount() > 1) item.setAmount(item.getAmount() - 1);
-        else player.getInventory().setItem(event.getHand(), null);
+        if (item.getAmount() > 1) {
+            item.setAmount(item.getAmount() - 1);
+        } else {
+            player.getInventory().setItem(event.getHand(), null);
+        }
 
-        long now = System.currentTimeMillis();
-        cooldowns.put(fish.getUniqueId(), now + BREED_COOLDOWN_MS);
-        cooldowns.put(partner.getUniqueId(), now + BREED_COOLDOWN_MS);
+        long until = System.currentTimeMillis() + BREED_COOLDOWN_MS;
+        cooldowns.put(fish.getUniqueId(), until);
+        cooldowns.put(partner.getUniqueId(), until);
 
-        fish.getWorld().spawnParticle(Particle.HEART, fish.getLocation().add(0, 0.5, 0), 7, 0.35, 0.35, 0.35, 0);
-        partner.getWorld().spawnParticle(Particle.HEART, partner.getLocation().add(0, 0.5, 0), 7, 0.35, 0.35, 0.35, 0);
+        fish.getWorld().spawnParticle(
+                Particle.HEART, fish.getLocation().add(0, 0.5, 0),
+                7, 0.35, 0.35, 0.35, 0
+        );
+        partner.getWorld().spawnParticle(
+                Particle.HEART, partner.getLocation().add(0, 0.5, 0),
+                7, 0.35, 0.35, 0.35, 0
+        );
 
         new BukkitRunnable() {
             @Override
             public void run() {
                 if (!fish.isValid() || !partner.isValid()) return;
-                TropicalFish baby = fish.getWorld().spawn(fish.getLocation(), TropicalFish.class);
-                baby.setBaby();
+
+                TropicalFish baby = fish.getWorld()
+                        .spawn(fish.getLocation(), TropicalFish.class);
+
                 baby.setPattern(fish.getPattern());
                 baby.setBodyColor(fish.getBodyColor());
                 baby.setPatternColor(fish.getPatternColor());
+
                 baby.setCustomName("§eBaby Tropical Fish");
                 baby.setCustomNameVisible(false);
-                baby.getWorld().spawnParticle(Particle.HEART, baby.getLocation().add(0, 0.5, 0), 10, 0.4, 0.4, 0.4, 0);
-                player.sendMessage("§aТропические рыбки размножились!");
+
+                baby.getWorld().spawnParticle(
+                        Particle.HEART, baby.getLocation().add(0, 0.5, 0),
+                        10, 0.4, 0.4, 0.4, 0
+                );
+
+                player.sendMessage("§aПоявилась новая тропическая рыбка!");
             }
         }.runTaskLater(this, 40L);
     }
 
     private boolean isOnCooldown(TropicalFish fish) {
         Long until = cooldowns.get(fish.getUniqueId());
+
         if (until == null) return false;
+
         if (System.currentTimeMillis() >= until) {
             cooldowns.remove(fish.getUniqueId());
             return false;
         }
+
         return true;
     }
 }
